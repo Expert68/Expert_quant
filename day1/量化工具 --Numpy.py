@@ -11,6 +11,7 @@ Numpy底层实现中使用了C语言和Fortran语言的机制分配内存。可�
 import timeit
 import time
 import numpy as np
+import matplotlib.pyplot as plt
 
 """
 使用timeit模块来计算构建10000个元素的列表循环求每个元素的平方所用的时间
@@ -261,5 +262,175 @@ print('最大涨幅{}'.format(np.max(stock_day_change_four,axis=1)))
 1、期望：试验中每次可能结果的概率乘以其结果的总和，反映一组数据平均取值的大小，用于表示分布的中心位置
 2、方差：在概率论和统计学中，方差是衡量一组数据离散程度的度量，概率论中方差用来度量数据和其期望之间的离散程度，方差越大，说明数据越离散
 3、标准差：标准差是方差的平方根，标准差和变量的计算单位相同，所以比其测得的误差结果比方差清晰，因此很多时候分析离散程度更多的使用标准差
+"""
 
 """
+示例如下：
+如果有a、b两个交易者，他们多次交易的平均战果都是赚100元，那么他们两个人的期望都是100，但是a交易者获利的稳定性不好，假设振幅为50即标准差为50，
+b交易者获利的稳定性比a好，假设振幅为20，即标准差为20
+"""
+
+a_investor = np.random.normal(loc=100,scale=50,size=(100,1))
+#生成期望为100，标准差为50的服从正态分布的100个数据
+b_investor = np.random.normal(loc=100,scale=20,size=(100,1))
+#生成期望为100，标准差为20的服从正态分布的100个数据
+
+print ('a交易者期望{0:.2f}元，标准差{1:.2f}，方差{2:.2f}'.format(a_investor.mean(),a_investor.std(),a_investor.var()))
+# a交易者期望104.20元，标准差44.40，方差1971.43
+print ('b交易者期望{0:.2f}元，标准差{1:.2f}，方差{2:.2f}'.format(b_investor.mean(),b_investor.std(),b_investor.var()))
+# b交易者期望96.31元，标准差19.15，方差366.64
+#注意：这里之期望不等于100，标准差不等于50是因为数据只有100个，数据越多越接近初始值
+
+"""
+下面可视化一下a、b两位交易者的获利图，图中3条直线分表代表：
+1、均值获利期望线
+2、均值获利期望线 + 获利标准差
+3、均值获利期望线 - 获利标准差
+"""
+
+#a交易者期望
+a_mean = a_investor.mean()
+#a交易者标准差
+a_std = a_investor.std()
+#收益绘制曲线
+plt.plot(a_investor)
+#绘制3条直线
+plt.axhline(a_mean,color='y')
+plt.axhline(a_mean+a_std,color='r')
+plt.axhline(a_mean-a_std,color='g')
+#得到的结果如numpy-1中所示
+#b交易者期望
+b_mean = b_investor.mean()
+#b交易者标准差
+b_std = b_investor.std()
+#收益绘制曲线
+plt.plot(b_investor)
+#绘制3条直线
+plt.axhline(b_mean,color='y')
+plt.axhline(b_mean+a_std,color='r')
+plt.axhline(b_mean-a_std,color='g')
+#得到的结果如numpy-2中所示
+
+'#######################################################################################################################'
+
+"""
+正态分布
+正态分布的特点：
+对于正态分布，数据的标准差越大，数据分布离散程度越大
+对于正态分布，数据的期望位于曲线的对称轴中心
+下面继续使用 stock_day_change = np.random.standard_normal((stock_cnt,view_days))生成的股票数据作为示例
+"""
+
+
+# stock_day_change=np.random.standard_normal((200,504))
+import scipy.stats as scs
+#均值期望
+stock_mean = stock_day_change[0].mean()
+#标准差
+stock_std = stock_day_change[0].std()
+print('股票0 mean 均值期望:{:.3f}'.format(stock_mean))
+print('股票0 std 振幅标准差:{:.3f}'.format(stock_std))
+#绘制股票0的直方图
+#bins--->设置分组的个数 normed--->是否对y轴数据进行标准化
+plt.hist(stock_day_change[0],bins=50,normed=True)
+#linspace从股票0的最小值------>到最大值生成数据 linspace默认生成50个数据
+fit_linespace = np.linspace(stock_day_change[0].min(),stock_day_change[0].max())
+#概率密度函数(PDF,probability density function)
+#由均值、方差来描述曲线，使用scipy.stats.norm.pdf生成拟合曲线
+pdf = scs.norm(stock_mean,stock_std).pdf(fit_linespace)
+#plot x=fit_linspace y= pdf
+plt.plot(fit_linespace,pdf,lw=2,c='r')
+#结果如图numpy-3所示
+
+'#######################################################################################################################'
+
+"""
+实例1：正态分布买入策略
+继续使用之前生成的200只股票504天的服从正态分布的涨跌数据，保留后50天的随机数据作为策略的验证数据，统计前454天中跌幅最大的3只股票，假设在第454天
+买入这3只股票，下面是得到的结果：
+*np.sort() 针对序列进行排序
+*np.argsort() 展示排序的原序列号
+"""
+#保留后50天的随机数据作为策略验证数据
+keep_days = 50
+#统计前454天中的200只股票的涨跌数据，切片切除0-454天， view_days = 504
+view_days = 504
+stock_cnt = 200
+stock_day_change_test = stock_day_change[:stock_cnt,0:view_days - keep_days]
+#打印出前454天跌幅最大的3只股票，总跌幅通过np.sum()函数设计，np.sort()函数对结果排序
+#对切片的理解 [参数1:参数2 , 参数3:参数4] 左边是对行的切片，右边是对列的切片， 参数1和参数3不写默认为0 参数2不写默认为行的最大值，参数4不写默认为列的最大值
+print(np.sort(np.sum(stock_day_change_test,axis=1))[:3])
+# array([-65.93157728, -47.37939716, -44.7361247 ])
+#使用np.argsort()函数针对股票跌幅进行排序，返回序号，即返回符合买入条件的股票序号
+stock_lower_array = np.argsort(np.sum(stock_day_change_test,axis=1))[:3]
+# array([138, 100, 165], dtype=int64)
+
+"""
+最后得到的结果：
+array([-65.93157728, -47.37939716, -44.7361247 ])
+array([138, 100, 165], dtype=int64)
+即跌幅最大的三只股票的序号是第138只，第100只，第165只
+
+下面通过构造函数show_buy_lower()可视化选中的前3只跌幅最大的股票前454日的走势，以及从第454日买入后的走势：
+"""
+def show_buy_lower(stock_ind):
+    """
+    :param stock_ind: 股票序号，即在stock_day_change中行的位置
+    :return:
+    """
+    #设置一个一行两列的可视化图标
+    _,axs = plt.subplots(nrows=1,ncols=2,figsize=(16,5))
+    #绘制前454天的股票走势图，np.cumsum():序列连续求和
+    axs[0].plot(np.arange(0,view_days-keep_days),stock_day_change_test[stock_ind].cumsum())
+    #绘制从第454天开始到504天中股票走势
+    cs_buy = stock_day_change[stock_ind][view_days-keep_days:view_days].cumsum()
+    #绘制从第454天到504天中股票走势图
+    axs[1].plot(np.arange(view_days-keep_days,view_days),cs_buy)
+    #返回从第454天开始到504天计算盈亏序列的最后一个值
+    return cs_buy[-1]
+
+#等权重的买入3只股票
+profit = 0
+#遍历跌幅最大的3只股票序号序列
+for stock_ind in stock_lower_array:
+    #profit即3只股票从第454天买入开始计算，直到最后一天的盈亏比例
+    profit += show_buy_lower(stock_ind)
+
+#str.format 支持{:.2f}形式保留两位小数
+print('买入第{}只股票，从第454个交易日开始持有盈亏:{:.2f}%'.format(stock_lower_array,profit))
+"""
+得到的结果为：
+[-64.34276711 -46.96916996 -41.00063126]
+买入第[ 76 170   8]只股票，从第454个交易日开始持有盈亏:12.31%
+曲线如图numpy-4所示
+这个策略之所以能够盈利，是由于通过np.random.standard_normal()建立的服从正态分布的涨跌幅数据，这样通过买入前454天中跌幅最大的3只股票的
+理论依据就是按照正态分布理论，这3只股票后期的涨跌分布一定是涨的概率大于跌得概率
+注意：这里并不能一定保证收益为正，产生这个的原因是第3只股票的收益一般都为负数，所以减小到2只股票甚至1只股票即能够保证总收益为正数
+其中只选1只股票得到收益为正的概率最大
+"""
+
+'#######################################################################################################################'
+
+"""
+伯努利分布也是在量化分析中频繁使用的分布
+伯努利分布：
+伯努利分布是很简单的离散分布，在伯努利分布下，随机变量只有两个可能的取值：1和0
+如果随机变量取值为1的概率为p，则随机变量取值为0的概率为1-p
+在numpy中使用numpy.random.binomial(1,p)来获取1的概率为p的前提下，生成的随机变量。如果p=0.5的话，那么就类似于投掷硬币的结果，
+即正面在上和反面在上的概率相同，实例如下：
+"""
+
+
+"""
+实例：如何在交易中获取优势：
+在交易中，交易者永远是处于不利地位的，不利的情况就是需要交手续费，
+"""
+
+
+
+
+
+
+
+
+

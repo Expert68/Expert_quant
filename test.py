@@ -1,21 +1,20 @@
-# list = [1,2,3,4,5]
-# list.insert(5,6)
-# for item,_ in enumerate(list):
-#     print(('%s,%s') %(item,_))
-# import timeit
-#
-# normal_list = range(10000)
-# print(timeit.timeit(stmt='[i**2 for i in range(10000)]'))
+from __future__ import  print_function
+import numpy as np
+np.random.seed(1337)
+from keras.datasets import mnist
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.utils import np_utils
 
-# from abupy import ABuSymbolPd
-# #两年的TSLA收盘数据tolist()
-# price_array = ABuSymbolPd.make_kl_df('TSLA',n_folds=2).close.tolist()
-# #两年的TSLA收盘日期tolist()
-# data_array = ABuSymbolPd.make_kl_df('TSLA',n_folds=2).date.tolist()
-# print(price_array[:5])
-# print(data_array[:5])
+batch_size = 128
+nb_classes = 10
+np_epoch = 10
+img_size = 28*28
+(x_train,y_train),(x_test,y_test) = mnist.load_data()
+x_train = x_train.reshape(y_train.shape[0],img_size).astype('float32')/255
+x_test = x_test.reshape(y_test.shape[0],img_size).astype('float32')/255
 
-
+print(x_train.shape,x_test.shape)
 
 
 

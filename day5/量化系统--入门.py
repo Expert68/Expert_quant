@@ -239,4 +239,61 @@ expan_max = pd.expanding_max(tsla_df['close'])
 #fillna()使用序列对应的expan_max
 tsla_df['n1_high'].fillna(value=expan_max,inplace=True)
 tsla_df.head()
+#结果如下所示：
+#              close    high     low  p_change    open  pre_close   volume  \
+# 2014-05-28  210.24  212.77  205.26    -0.624  210.02     211.56  5496278
+# 2014-05-29  210.24  212.49  207.72     0.000  210.57     210.24  3694596
+# 2014-05-30  207.77  214.80  207.02    -1.175  210.30     210.24  5586068
+# 2014-06-02  204.70  209.35  201.67    -1.478  207.33     207.77  4668115
+# 2014-06-03  204.94  208.00  202.59     0.117  203.49     204.70  3866182
+#
+#                 date  date_week   atr21   atr14  key  n1_high
+# 2014-05-28  20140528          2  7.5100  7.5100    0   210.24
+# 2014-05-29  20140529          3  6.0748  6.0421    1   210.24
+# 2014-05-30  20140530          4  6.6981  6.7060    2   210.24
+# 2014-06-02  20140602          0  7.2350  7.2763    3   210.24
+# 2014-06-03  20140603          1  6.7973  6.7894    4   210.24
+#下面使用类似的方式构建N2天内最低价格卖出信号n2_low:
+#rolling_min()函数和rolling_max()函数类似
+tsla_df['n2_low'] = pd.rolling_min(tsla_df['low'],window=N2)
+expan_min = pd.expanding_min(tsla_df['close'])
+tsla_df['n2_low'].fillna(value=expan_min,inplace=True)
+#下面根据突破的定义来构建signal列：
+#当天的收盘价格超过N天内的最高价或最低价，超过最高价格作为买入信号买入股票持有
+buy_index = tsla_df[tsla_df['close']>tsla_df['n1_high'].shift(1)].index
+tsla_df.loc[buy_index,'signal'] = 1
+#当天收盘价格超过N天内的最高价格或最低价格，超过最低价格作为卖出信号
+sell_index = tsla_df[tsla_df['close']<tsla_df['n2_low'].shift(1)].index
+tsla_df.loc[sell_index,'signal'] = 0
+#筛选条件 今天的收盘价格>截止到昨天的最高价格 和 今天的收盘价格 < 截止到昨天的最低价格
+#下面使用饼图显示在整个交易中信号的产生情况，可以发现买入信号比卖出信号多
+#如下图所示
+tsla_df.signal.value_counts().plot(kind='pie',figsize=(5,5))
+# 1.0    54
+# 0.0    53
+# Name: signal, dtype: int64
+"""
+下面的过程为：
+    1、讲操作信号转化为持股状态，得到一个新的列数据
+    2、计算基准收益
+    3、计算使用趋势突破策略的收益
+    4、可视化收益的情况对比图
+
+将信号操作序列移动一个单位，代表第二天再执行操作信号，转换得到的持股状态，
+这列不进行shift(1)操作也可以，代表信号产生当天执行，但是由于收盘价格是在收盘后才确定的，
+计算突破使用了收盘价格，所以使用shift(1)会更接近真实情况
+"""
+tsla_df['keep'] = tsla_df['signal'].shift(1)
+tsla_df['keep'].fillna(method='ffill',inplace=True)
+tsla_df['benchmark_profit'] = np.log(tsla_df['close']/tsla_df['close'].shift(1))
+tsla_df['trend_profit'] = tsla_df['keep'] * tsla_df['benchmark_profit']
+tsla_df[['benchmark_profit','trend_profit']].cumsum().plot(grid=True,figsize=(14,7))
+#结果如图入门--6所示
+"""
+成功的交易，无非就是在低点买入特定的股票，然后再高点卖出(选股，择时)
+量化交易的有事就是利用统计学寻找一些特定的市场行为，这些行为会再时间序列中重复出现，
+投资者应当捕捉这些行为，提高自己在赌局中的优势，想办法提高胜率
+当身在赌局中时，如果没有自己的优势，那么一定处于不利地位
+"""
+
 
